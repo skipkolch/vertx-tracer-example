@@ -27,6 +27,7 @@ dependencies {
     implementation("io.opentelemetry.instrumentation:opentelemetry-instrumentation-annotations:${Versions.openTelemetry}")
 
     implementation("io.vertx:vertx-core:${Versions.vertx}")
+    implementation("io.vertx:vertx-web:${Versions.vertx}")
     implementation("io.vertx:vertx-opentelemetry:${Versions.vertx}")
 
     testImplementation(platform("org.junit:junit-bom:5.10.0"))
@@ -44,6 +45,15 @@ tasks {
             "-Dotel.javaagent.configuration-file=src/main/resources/config/otel-config.properties",
             "-Dotel.service.name=main"
         )
+    }
+}
+
+tasks {
+    register<JavaExec>("startHttpServer") {
+        group = "launch"
+        classpath = sourceSets["main"].runtimeClasspath
+        mainClass.set("vertx.worker.traces.VertxHttpServer")
+        workingDir = rootProject.projectDir
     }
 }
 
