@@ -1,110 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<Configuration status="info" name="Neutrino">
-  <Appenders>
-    <RollingFile name="NeutrinoAppender"
-                 fileName="logs/${main:0:-test}/neutrino.log"
-                 filePattern="logs/${main:0:-test}/neutrino-%i.log.gz"
-                 ignoreExceptions="false">
-      <PatternLayout pattern="[%d{dd-MM HH:mm:ss,SSS}] [%-5p] %t - %c : %m%ex%n"/>
-      <Policies>
-        <SizeBasedTriggeringPolicy size="100 MB"/>
-        <OnStartupTriggeringPolicy/>
-      </Policies>
-      <DefaultRolloverStrategy max="10"/>
-    </RollingFile>
+<Configuration status="info" name="WorkerTraceMain">
+    <Appenders>
+        <Console name="Console">
+            <PatternLayout
+                    pattern="[%d{dd-MM HH:mm:ss,SSS}] [%highlight{%-5level}{FATAL=bg_red, ERROR=red, WARN=yellow, INFO=green, DEBUG=blue}] traceId: %X{trace_id} spanId: %X{span_id} %t - %c: %m%ex%n"
+                    disableAnsi="false"
+            />
+        </Console>
+    </Appenders>
 
-    <RollingFile name="KafkaAppender"
-                 fileName="logs/${main:0:-test}/kafka.log"
-                 filePattern="logs/${main:0:-test}/kafka-%i.log.gz"
-                 ignoreExceptions="false">
-      <PatternLayout pattern="[%d{dd-MM HH:mm:ss,SSS}] %c : %m%ex%n"/>
-      <Policies>
-        <SizeBasedTriggeringPolicy size="50 MB"/>
-        <OnStartupTriggeringPolicy/>
-      </Policies>
-      <DefaultRolloverStrategy max="10"/>
-    </RollingFile>
-
-    <RollingFile name="TrafficAppender"
-                 fileName="logs/${main:0:-test}/traffic/traffic.log"
-                 filePattern="logs/${main:0:-test}/traffic/traffic-%i.log.gz"
-                 ignoreExceptions="false">
-      <PatternLayout pattern="[%d{dd-MM HH:mm:ss,SSS}] %c : %m%ex%n"/>
-      <Policies>
-        <SizeBasedTriggeringPolicy size="50 MB"/>
-        <OnStartupTriggeringPolicy/>
-      </Policies>
-      <DefaultRolloverStrategy max="10"/>
-    </RollingFile>
-
-    <RollingFile name="ChannelsAppender"
-                 fileName="logs/${main:0:-test}/channels/channels.log"
-                 filePattern="logs/${main:0:-test}/channels/channels-%i.log.gz"
-                 ignoreExceptions="false">
-      <PatternLayout pattern="[%d{dd-MM HH:mm:ss,SSS}] %c : %m%ex%n"/>
-      <Policies>
-        <SizeBasedTriggeringPolicy size="50 MB"/>
-        <OnStartupTriggeringPolicy/>
-      </Policies>
-      <DefaultRolloverStrategy max="10"/>
-    </RollingFile>
-
-    <Async name="NeutrinoAsyncFile">
-      <AppenderRef ref="NeutrinoAppender"/>
-    </Async>
-
-    <Console name="PureConsole">
-      <PatternLayout pattern="%m%ex%n"/>
-    </Console>
-
-    <Console name="Console">
-      <PatternLayout
-          pattern="[%d{dd-MM HH:mm:ss,SSS}] [%highlight{%-5level}{FATAL=bg_red, ERROR=red, WARN=yellow, INFO=green, DEBUG=blue}] traceId: %X{trace_id} spanId: %X{span_id} %t - %c: %m%ex%n"
-          disableAnsi="false"
-      />
-    </Console>
-  </Appenders>
-
-  <Loggers>
-    <Logger name="PureConsole" additivity="false">
-      <AppenderRef ref="PureConsole"/>
-    </Logger>
-
-    <Logger name="channel.data" additivity="false">
-      <AppenderRef ref="ChannelsAppender"/>
-    </Logger>
-
-    <Logger name="front.end.traffic" additivity="false">
-      <AppenderRef ref="TrafficAppender"/>
-    </Logger>
-
-    <Logger name="kafka" additivity="false">
-      <AppenderRef ref="KafkaAppender"/>
-    </Logger>
-
-    <Logger name="com.sun.jersey.spi.container.servlet.WebComponent" level="ERROR">
-      <AppenderRef ref="NeutrinoAsyncFile"/>
-    </Logger>
-
-    <Logger name="org.apache.kafka" level="WARN">
-      <AppenderRef ref="NeutrinoAsyncFile"/>
-    </Logger>
-
-    <Logger name="kafka.producer.SyncProducer" level="WARN">
-      <AppenderRef ref="NeutrinoAsyncFile"/>
-    </Logger>
-
-    <Logger name="io.confluent.kafka.serializers" level="WARN">
-      <AppenderRef ref="NeutrinoAsyncFile"/>
-    </Logger>
-
-    <Logger name="org.mongodb" level="WARN">
-      <AppenderRef ref="NeutrinoAsyncFile"/>
-    </Logger>
-
-    <Root level="INFO">
-      <AppenderRef ref="Console"/>
-      <AppenderRef ref="NeutrinoAsyncFile"/>
-    </Root>
-  </Loggers>
+    <Loggers>
+        <Root level="INFO">
+            <AppenderRef ref="Console"/>
+        </Root>
+    </Loggers>
 </Configuration>

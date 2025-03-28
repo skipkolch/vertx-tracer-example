@@ -40,7 +40,7 @@ public final class WorkerTraceMain {
                     new Particle(eventLoopVerticle(), EVENT_LOOP),
                     new Particle(workerVerticle(), WORKER)
                 ).map(it -> vertx.deployVerticle(it.verticle, it.options)).toList()
-        ).onSuccess(__ -> log.warn("All verticles deployed successfully"))
+        ).onSuccess(__ -> log.info("All verticles deployed successfully"))
         .onFailure(e -> {
             log.error("Deployment failed: " + e.getMessage());
             System.exit(1);
