@@ -2,7 +2,7 @@
 
 
 URL="http://localhost:8080/api"
-MAX_REQUESTS=10
+MAX_REQUESTS=100
 
 echo "🚀 Starting $MAX_REQUESTS parallel requests to:"
 echo "   $URL"

@@ -25,10 +25,13 @@ dependencies {
     implementation("org.apache.logging.log4j:log4j-core:${Versions.log4j}")
 
     implementation("io.opentelemetry.instrumentation:opentelemetry-instrumentation-annotations:${Versions.openTelemetry}")
+    implementation("io.opentelemetry:opentelemetry-exporter-otlp:${Versions.openTelemetry}")
 
     implementation("io.vertx:vertx-core:${Versions.vertx}")
     implementation("io.vertx:vertx-web:${Versions.vertx}")
     implementation("io.vertx:vertx-opentelemetry:${Versions.vertx}")
+    implementation("com.google.inject:guice:5.1.0")
+    implementation("javax.inject:javax.inject:1")
 
     testImplementation(platform("org.junit:junit-bom:5.10.0"))
     testImplementation("org.junit.jupiter:junit-jupiter")
@@ -41,9 +44,9 @@ tasks {
         mainClass.set("vertx.worker.traces.WorkerTraceMain")
         workingDir = rootProject.projectDir
         jvmArgs = listOf(
-            "-javaagent:src/main/resources/opentelemetry-javaagent.jar",
-            "-Dotel.javaagent.configuration-file=src/main/resources/config/otel-config.properties",
-            "-Dotel.service.name=main"
+            //"-javaagent:src/main/resources/opentelemetry-javaagent.jar",
+            //"-Dotel.javaagent.configuration-file=src/main/resources/config/otel-config.properties",
+            //"-Dotel.service.name=main"
         )
     }
 }

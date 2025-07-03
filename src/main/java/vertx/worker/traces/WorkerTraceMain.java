@@ -1,6 +1,10 @@
 package vertx.worker.traces;
 
 
+import io.opentelemetry.api.GlobalOpenTelemetry;
+import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.Tracer;
+import io.opentelemetry.context.Scope;
 import io.opentelemetry.instrumentation.annotations.WithSpan;
 import io.vertx.core.*;
 import io.vertx.core.buffer.Buffer;
@@ -9,6 +13,7 @@ import io.vertx.core.eventbus.Message;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.net.NetSocket;
 import io.vertx.core.tracing.TracingPolicy;
+import io.vertx.tracing.opentelemetry.OpenTelemetryOptions;
 import io.vertx.tracing.opentelemetry.OpenTelemetryTracingFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,6 +25,7 @@ import java.util.stream.Stream;
 import static io.vertx.core.ThreadingModel.EVENT_LOOP;
 import static io.vertx.core.ThreadingModel.WORKER;
 
+@SuppressWarnings("ALL")
 public final class WorkerTraceMain {
     private static final Logger log = LoggerFactory.getLogger("log-trace");
 
@@ -30,9 +36,13 @@ public final class WorkerTraceMain {
     private static Map<String, NetSocket> sockets = new ConcurrentHashMap<>();
 
     public static void main(String[] args) {
+        final var vertxOptions = new VertxOptions()
+                .setTracingOptions(new OpenTelemetryOptions(OpenTelemetryConfig.configure()));
+
         final var vertx = Vertx.builder()
-                .withTracer(new OpenTelemetryTracingFactory())
+                .with(vertxOptions)
                 .build();
+
         Future.join(
                         Stream.of(
                                 new Particle(eventLoopVerticle(), EVENT_LOOP),
@@ -70,6 +80,8 @@ public final class WorkerTraceMain {
 
     private static AbstractVerticle workerVerticle() {
         return new AbstractVerticle() {
+            private final Tracer tracer = GlobalOpenTelemetry.getTracer("worker");
+
             @Override
             public void start(Promise<Void> startPromise) {
                 final var netServer = vertx.createNetServer();
@@ -86,35 +98,55 @@ public final class WorkerTraceMain {
                         .onFailure(startPromise::fail);
             }
 
-            @WithSpan
             private void socketHandle(NetSocket socket, Buffer buffer) {
-                try {
+                Span span = tracer.spanBuilder("socketHandle").startSpan();
+                try (Scope scope = span.makeCurrent()) {
                     final var request = new JsonObject(buffer.toString());
                     final var id = request.getString("id");
+
+                    span.setAttribute("net.request.id", id);
                     log.info("Get request from NET for {}", id);
 
                     sockets.put(id, socket);
-                    vertx.eventBus().send(WORKER_ADDRESS, request, new DeliveryOptions().setTracingPolicy(TracingPolicy.PROPAGATE));
+
+                    vertx.eventBus().send(
+                            WORKER_ADDRESS,
+                            request,
+                            new DeliveryOptions().setTracingPolicy(TracingPolicy.PROPAGATE)
+                    );
                 } catch (Exception e) {
+                    span.recordException(e);
                     log.warn("Invalid request format: {}", buffer.toString());
+                } finally {
+                    span.end();
                 }
             }
 
-            @WithSpan
+            //@WithSpan - свою анноташку?
             private void messageHandle(Message<JsonObject> msg) {
-                final var response = msg.body();
-                final var id = response.getString("id");
-                final var socket = sockets.get(id);
-                if (socket != null) {
-                    log.info("Send response to NET for: {}", id);
-                    socket.write(response.encode());
-                    socket.close();
-                } else {
-                    log.warn("Socket not found for id: {}", id);
+                Span span = tracer.spanBuilder("messageHandle").startSpan();
+                try (Scope scope = span.makeCurrent()) {
+                    extracted(msg, span);
+                } finally {
+                    span.end();
                 }
             }
-
         };
+    }
+
+    private static void extracted(Message<JsonObject> msg, Span span) {
+        final var response = msg.body();
+        final var id = response.getString("id");
+
+        span.setAttribute("response.id", id);
+        final var socket = sockets.get(id);
+        if (socket != null) {
+            log.info("Send response to NET for: {}", id);
+            socket.write(response.encode());
+            socket.close();
+        } else {
+            log.warn("Socket not found for id: {}", id);
+        }
     }
 
     record Particle(AbstractVerticle verticle, DeploymentOptions options) {

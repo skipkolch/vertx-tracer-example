@@ -1,10 +1,7 @@
 package vertx.worker.traces;
 
 
-import io.vertx.core.AbstractVerticle;
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Promise;
-import io.vertx.core.Vertx;
+import io.vertx.core.*;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.net.NetClient;
@@ -13,9 +10,11 @@ import io.vertx.core.net.NetSocket;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
+import io.vertx.tracing.opentelemetry.OpenTelemetryOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@SuppressWarnings("ALL")
 public final class VertxHttpServer extends AbstractVerticle {
     private static final Logger log = LoggerFactory.getLogger("http-server");
 
@@ -27,7 +26,14 @@ public final class VertxHttpServer extends AbstractVerticle {
     private static final int SOCKET_TIMEOUT_MS = 5000;
 
     public static void main(String[] args) {
-        Vertx.vertx().deployVerticle(new VertxHttpServer());
+        final var vertxOptions = new VertxOptions()
+                .setTracingOptions(new OpenTelemetryOptions(OpenTelemetryConfig.configure()));
+
+        final var vertx = Vertx.builder()
+                .with(vertxOptions)
+                .build();
+
+        vertx.deployVerticle(new VertxHttpServer());
     }
 
     @Override
