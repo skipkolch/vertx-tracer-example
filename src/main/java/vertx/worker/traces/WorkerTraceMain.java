@@ -46,6 +46,7 @@ public final class WorkerTraceMain {
         Future.join(
                         Stream.of(
                                 new Particle(eventLoopVerticle(), EVENT_LOOP),
+                                new Particle(eventLoopVerticle(), EVENT_LOOP),
                                 new Particle(workerVerticle(), WORKER)
                         ).map(it -> vertx.deployVerticle(it.verticle, it.options)).toList()
                 ).onSuccess(__ -> log.info("All verticles deployed successfully"))
@@ -67,7 +68,7 @@ public final class WorkerTraceMain {
                     final var json = new JsonObject()
                             .put("response", "Hello world!")
                             .put("id", id);
-
+                    log.info("Processing request for {}", id);
                     vertx.eventBus().send(WORKER_ADDRESS_ANSWER, json,
                             new DeliveryOptions()
                                     .setTracingPolicy(TracingPolicy.PROPAGATE));
