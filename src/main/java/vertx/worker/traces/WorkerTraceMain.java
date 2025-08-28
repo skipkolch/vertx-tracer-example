@@ -1,10 +1,5 @@
 package vertx.worker.traces;
 
-
-import io.opentelemetry.api.GlobalOpenTelemetry;
-import io.opentelemetry.api.trace.Span;
-import io.opentelemetry.api.trace.Tracer;
-import io.opentelemetry.context.Scope;
 import io.vertx.core.*;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.eventbus.DeliveryOptions;
@@ -59,7 +54,13 @@ public final class WorkerTraceMain {
         return new AbstractVerticle() {
             @Override
             public void start(Promise<Void> startPromise) {
-                vertx.eventBus().<JsonObject>consumer(WORKER_ADDRESS, msg -> {
+                vertx.eventBus().<JsonObject>consumer(WORKER_ADDRESS, msg -> busHandler(msg));
+                startPromise.complete();
+            }
+
+            //@WithSpan
+            private void busHandler(Message<JsonObject> msg) {
+                new WithSpan("socketHandle", false).withSpan(__ -> {
                     final var body = msg.body();
                     final var id = body.getString("id");
 
@@ -71,16 +72,12 @@ public final class WorkerTraceMain {
                             new DeliveryOptions()
                                     .setTracingPolicy(TracingPolicy.PROPAGATE));
                 });
-                startPromise.complete();
             }
-
         };
     }
 
     private static AbstractVerticle workerVerticle() {
         return new AbstractVerticle() {
-            private final Tracer tracer = GlobalOpenTelemetry.getTracer("worker");
-
             @Override
             public void start(Promise<Void> startPromise) {
                 final var netServer = vertx.createNetServer();
@@ -97,9 +94,9 @@ public final class WorkerTraceMain {
                         .onFailure(startPromise::fail);
             }
 
+            //@WithSpan
             private void socketHandle(NetSocket socket, Buffer buffer) {
-                Span span = tracer.spanBuilder("socketHandle").startSpan();
-                try (Scope scope = span.makeCurrent()) {
+                new WithSpan("socketHandle", false).withSpan(span -> {
                     final var request = new JsonObject(buffer.toString());
                     final var id = request.getString("id");
 
@@ -113,40 +110,28 @@ public final class WorkerTraceMain {
                             request,
                             new DeliveryOptions().setTracingPolicy(TracingPolicy.PROPAGATE)
                     );
-                } catch (Exception e) {
-                    span.recordException(e);
-                    log.warn("Invalid request format: {}", buffer.toString());
-                } finally {
-                    span.end();
-                }
+                });
             }
 
             //@WithSpan
             private void messageHandle(Message<JsonObject> msg) {
-                Span span = tracer.spanBuilder("messageHandle").startSpan();
-                try (Scope scope = span.makeCurrent()) {
-                    extracted(msg, span);
-                } finally {
-                    span.end();
-                }
+                new WithSpan("messageHandle", false).withSpan(span -> {
+                    final var response = msg.body();
+                    final var id = response.getString("id");
+                    span.setAttribute("response.id", id);
+                    final var socket = sockets.get(id);
+                    if (socket != null) {
+                        log.info("Send response to NET for: {}", id);
+                        socket.write(response.encode());
+                        socket.close();
+                    } else {
+                        log.warn("Socket not found for id: {}", id);
+                    }
+                });
             }
         };
     }
 
-    private static void extracted(Message<JsonObject> msg, Span span) {
-        final var response = msg.body();
-        final var id = response.getString("id");
-
-        span.setAttribute("response.id", id);
-        final var socket = sockets.get(id);
-        if (socket != null) {
-            log.info("Send response to NET for: {}", id);
-            socket.write(response.encode());
-            socket.close();
-        } else {
-            log.warn("Socket not found for id: {}", id);
-        }
-    }
 
     record Particle(AbstractVerticle verticle, DeploymentOptions options) {
         Particle(AbstractVerticle verticle, ThreadingModel threadingModel) {
