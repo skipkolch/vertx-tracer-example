@@ -5,7 +5,6 @@ import io.opentelemetry.api.GlobalOpenTelemetry;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.context.Scope;
-import io.opentelemetry.instrumentation.annotations.WithSpan;
 import io.vertx.core.*;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.eventbus.DeliveryOptions;
@@ -14,7 +13,6 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.core.net.NetSocket;
 import io.vertx.core.tracing.TracingPolicy;
 import io.vertx.tracing.opentelemetry.OpenTelemetryOptions;
-import io.vertx.tracing.opentelemetry.OpenTelemetryTracingFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -123,7 +121,7 @@ public final class WorkerTraceMain {
                 }
             }
 
-            //@WithSpan - свою анноташку?
+            //@WithSpan
             private void messageHandle(Message<JsonObject> msg) {
                 Span span = tracer.spanBuilder("messageHandle").startSpan();
                 try (Scope scope = span.makeCurrent()) {
